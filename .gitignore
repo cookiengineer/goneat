@@ -1,0 +1,12 @@
+# Build and test artifacts
+coverage.out
+coverage.html
+*.test
+*.prof
+*.npz
+*.dat
+
+# Runtime output from examples
+out/
+*_snapshot.json
+*_population.json
