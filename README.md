@@ -35,8 +35,9 @@ can express as sensors and controls.
 - **`simulation`** - a `World` interface, user-defined reward/punish callbacks,
   a lock-step `ChannelRunner` (one goroutine per agent) and a deterministic
   `InlineRunner`, plus resumable snapshots with optional auto-save.
-- **`adapter`** - enums, string-dictionary similarity, 2D/3D positions,
-  scalars, booleans, and the `Vectorizer`/`Manifest` frame layout.
+- **`adapter`** - adapters for Go's native data types (bool, int, uint,
+  float32/float64, byte, rune, complex, time.Duration, slices, maps, strings,
+  enums, 2D/3D positions) and the `Vectorizer`/`Manifest` frame layout.
 - **`engine/vector`** - scalar and `GOEXPERIMENT=simd` math kernels.
 - **`engine/random`** - a serializable PCG32 generator for reproducible runs.
 

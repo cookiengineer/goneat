@@ -122,9 +122,31 @@ x, y := paddle.XY()                       // applied back in world units
 `adapter.Placed` adapters also expose a coordinate in the unit hypercube for
 HyperNEAT.
 
-Available adapters: `EnumAdapter` (ordinal or one-shot), `StringAdapter`
-(similarity to a set of anchor strings), `Position2D`, `Position3D`,
-`ScalarAdapter` (`NewClampedScalar` or `NewSquashedScalar`), `BoolAdapter`.
+Available adapters:
+
+| Adapter | Constructor | Data type |
+|---|---|---|
+| Enum | `NewEnum` | ordered categories (ordinal or one-hot) |
+| String | `NewString` | string (similarity to anchor strings) |
+| Bool | `NewBool` | bool |
+| Scalar | `NewClampedScalar` / `NewSquashedScalar` | float64 |
+| Float32 | `NewClampedFloat32` / `NewSquashedFloat32` | float32 |
+| Int | `NewInt` | int64 (bounded) |
+| Uint | `NewUint` | uint64 (bounded) |
+| Byte | `NewByte` | byte (0..255) |
+| Rune | `NewRune` / `NewRuneRange` | rune |
+| Complex | `NewComplex` / `NewComplexUniform` | complex128 (2 dims) |
+| Duration | `NewDuration` | time.Duration |
+| Position | `NewPosition2D` / `NewPosition3D` | world coordinates |
+| Slice | `NewSlice` / `NewSliceWithScales` | []float64 |
+| Map | `NewMap` | map[string]float64 |
+
+```go
+level := adapter.NewInt("level", 0, 10)
+pixels := adapter.NewSlice("pixels", 16, 1.0)      // 16 already-normalized values
+stats := adapter.NewMap("stats", []string{"hp", "mp"}, 0, 100)
+timing := adapter.NewDuration("cooldown", 0, 5*time.Second)
+```
 
 ---
 

@@ -313,9 +313,24 @@ type Control interface {
 
 `Vectorizer` concatenates sensors and controls into flat frames and produces a
 `Manifest` describing each slot (name, offset, dimensions, and optional
-HyperNEAT placement). Concrete adapters: `EnumAdapter` (ordinal or one-hot),
-`StringAdapter` (anchor-dictionary similarity), `Position2D`/`Position3D`,
-`ScalarAdapter` (clamp or tanh), `BoolAdapter`.
+HyperNEAT placement). The available adapters are:
+
+| Adapter | Data type | Dimensions | Encoding |
+|---|---|---|---|
+| `EnumAdapter` | ordered categories | 1 or N (one-hot) | ordinal or one-hot |
+| `StringAdapter` | string | 1 | similarity to anchor strings |
+| `BoolAdapter` | bool | 1 | -1 / +1 |
+| `ScalarAdapter` | float64 | 1 | clamp or tanh |
+| `Float32Adapter` | float32 | 1 | clamp or tanh |
+| `IntAdapter` | int64 | 1 | bounded, rounded |
+| `UintAdapter` | uint64 | 1 | bounded, rounded |
+| `ByteAdapter` | byte | 1 | 0..255 |
+| `RuneAdapter` | rune | 1 | bounded code point |
+| `ComplexAdapter` | complex128 | 2 | tanh on real/imag |
+| `DurationAdapter` | time.Duration | 1 | bounded nanoseconds |
+| `Position2D` / `Position3D` | world coordinates | 2 / 3 | bounds to [-1, 1] |
+| `SliceAdapter` | []float64 | N | per-element scale |
+| `MapAdapter` | map[string]float64 | N | fixed key order |
 
 ---
 
