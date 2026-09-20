@@ -18,6 +18,10 @@ func phaseComparisonMaxGenerations(task Task) int {
 		return 50
 	case "cubic":
 		return 400
+	case "quintic":
+		return 300
+	case "septic":
+		return 300
 	default:
 		return 200
 	}
@@ -35,6 +39,8 @@ func BenchmarkPhaseComparison(b *testing.B) {
 		NewMultiplexer(2),
 		NewCartPole(500),
 		NewCubicBoundary(9),
+		NewOddPowerBoundary("quintic", 5),
+		NewOddPowerBoundary("septic", 7),
 	}
 	seeds := []int64{1, 2, 3}
 

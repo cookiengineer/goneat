@@ -38,7 +38,8 @@ bench-xor:
 bench-vector:
 	$(GO) test -bench=. -benchmem ./engine/vector/...
 
-# Phase comparison across standard benchmarks (parity, multiplexer, cartpole).
+# Phase comparison across standard benchmarks (parity, multiplexer, cartpole,
+# polynomial boundaries).
 # Reports generations/op, solve_rate and best_fitness per strategy. This runs
 # full searches, so it takes minutes; use -benchtime to control repetition.
 bench-phases:

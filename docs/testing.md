@@ -155,7 +155,8 @@ make bench-phases
 
 `BenchmarkPhaseComparison` runs every standard task against every strategy:
 
-- tasks: `parity2`, `parity3`, `parity4`, `mux6`, `cartpole`, `cubic`
+- tasks: `parity2`, `parity3`, `parity4`, `mux6`, `cartpole`, `cubic`,
+  `quintic`, `septic`
 - strategies: `default`, `prune`, `backprop`, `hybrid`, `phased`
 
 Each sub-benchmark reports `generations/op`, `solve_rate` and `best_fitness`.
@@ -193,7 +194,14 @@ type Task interface {
 | `NewParity(bits)` | `bits -> 1` | combinatorial, standard NEAT benchmark |
 | `NewMultiplexer(addressBits)` | `(a + 2^a) -> 1` | classic NEAT/HyperNEAT benchmark |
 | `NewCartPole(maxSteps)` | `4 -> 1` | sequential control, multi-start, heuristic trainer |
-| `NewCubicBoundary(res)` / `NewQuinticBoundary(res)` | `2 -> 1` | curved `y = x^3` / `x^5` boundary |
+| `NewCubicBoundary(res)` | `2 -> 1` | curved `y = x^3` boundary |
+| `NewQuinticBoundary(res)` / `NewSepticBoundary(res)` | `2 -> 1` | curved `y = x^5` / `x^7` boundary (square grid) |
+| `NewOddPowerBoundary(name, power)` | `2 -> 1` | odd-power boundary on the tuned 11x9 grid used by the comparison |
+
+`NewOddPowerBoundary` samples a denser x axis than y axis. On a coarse square
+grid `x^5` and `x^7` produce identical labels, because the two curves only
+differ inside a thin band that no sample lands in; the extra x resolution makes
+them distinct without the cost of a fine square grid.
 
 `RunSearch(DefaultRunConfig(task, strategy, seed, maxGenerations))` runs a
 strategy and returns `RunResult{Generations, Solved, BestFitness, NodeCount,

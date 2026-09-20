@@ -32,30 +32,93 @@ func TestPolynomialBoundaryLabels(t *testing.T) {
 	if quintic.Boundary(0.5) != math.Pow(0.5, 5) {
 		t.Fatalf("quintic boundary(0.5) = %v", quintic.Boundary(0.5))
 	}
+	if quintic.Boundary(-0.5) != -math.Pow(0.5, 5) {
+		t.Fatalf("quintic boundary(-0.5) = %v", quintic.Boundary(-0.5))
+	}
+
+	septic := NewSepticBoundary(11)
+	if septic.Boundary(0.5) != math.Pow(0.5, 7) {
+		t.Fatalf("septic boundary(0.5) = %v", septic.Boundary(0.5))
+	}
+	if septic.Boundary(-0.5) != -math.Pow(0.5, 7) {
+		t.Fatalf("septic boundary(-0.5) = %v", septic.Boundary(-0.5))
+	}
+}
+
+// TestOddPowerBoundariesAreDistinct guards the higher-order tasks: the tuned
+// grid must actually separate y = x^3, x^5 and x^7, otherwise x^5 and x^7
+// collapse to the same labeled dataset and the benchmarks measure nothing new.
+func TestOddPowerBoundariesAreDistinct(t *testing.T) {
+	tasks := map[string]*PolynomialClassification{
+		"cubic":   NewOddPowerBoundary("cubic", 3),
+		"quintic": NewOddPowerBoundary("quintic", 5),
+		"septic":  NewOddPowerBoundary("septic", 7),
+	}
+	labels := func(task *PolynomialClassification) []float64 {
+		points := task.Points()
+		values := make([]float64, len(points))
+		for i, point := range points {
+			values[i] = point.Targets[0]
+		}
+		return values
+	}
+	orders := []string{"cubic", "quintic", "septic"}
+	for i := 0; i < len(orders); i++ {
+		for j := i + 1; j < len(orders); j++ {
+			left := labels(tasks[orders[i]])
+			right := labels(tasks[orders[j]])
+			if len(left) != len(right) {
+				t.Fatalf("%s and %s have different point counts (%d vs %d)",
+					orders[i], orders[j], len(left), len(right))
+			}
+			identical := true
+			for k := range left {
+				if left[k] != right[k] {
+					identical = false
+					break
+				}
+			}
+			if identical {
+				t.Fatalf("%s and %s produce identical labels on the tuned grid", orders[i], orders[j])
+			}
+		}
+	}
 }
 
 // TestPolynomialClassificationSolvable proves the curved, odd-degree decision
-// boundary is learnable. It also proves per-node activation functions are used:
-// a solved champion must contain hidden nodes with more than one distinct
+// boundaries are learnable. It also proves per-node activation functions are
+// used: a solved champion must contain hidden nodes with more than one distinct
 // activation.
 func TestPolynomialClassificationSolvable(t *testing.T) {
-	task := NewCubicBoundary(11)
-	config := DefaultRunConfig(task, Strategy{Name: "default", Mode: neat.PhaseDefault}, 1, 500)
-	result, err := RunSearch(config)
-	if err != nil {
-		t.Fatalf("RunSearch: %v", err)
+	cases := []struct {
+		task   *PolynomialClassification
+		budget int
+	}{
+		{NewCubicBoundary(11), 500},
+		{NewOddPowerBoundary("quintic", 5), 300},
+		{NewOddPowerBoundary("septic", 7), 300},
 	}
-	if !result.Solved {
-		t.Fatalf("cubic classification not solved within %d generations (best %.4f)",
-			config.MaxGenerations, result.BestFitness)
-	}
-	if result.Champion == nil {
-		t.Fatalf("no champion returned")
-	}
-	if hidden := len(result.Champion.HiddenIDs()); hidden < 2 {
-		t.Fatalf("expected at least 2 hidden nodes after expansion, got %d", hidden)
-	}
-	if distinct := result.Champion.DistinctHiddenActivations(); distinct < 2 {
-		t.Fatalf("expected hidden nodes with different activation functions, got %d", distinct)
+	for _, testCase := range cases {
+		task := testCase.task
+		t.Run(task.Name(), func(t *testing.T) {
+			config := DefaultRunConfig(task, Strategy{Name: "default", Mode: neat.PhaseDefault}, 1, testCase.budget)
+			result, err := RunSearch(config)
+			if err != nil {
+				t.Fatalf("RunSearch: %v", err)
+			}
+			if !result.Solved {
+				t.Fatalf("%s classification not solved within %d generations (best %.4f)",
+					task.Name(), config.MaxGenerations, result.BestFitness)
+			}
+			if result.Champion == nil {
+				t.Fatalf("no champion returned")
+			}
+			if hidden := len(result.Champion.HiddenIDs()); hidden < 2 {
+				t.Fatalf("expected at least 2 hidden nodes after expansion, got %d", hidden)
+			}
+			if distinct := result.Champion.DistinctHiddenActivations(); distinct < 2 {
+				t.Fatalf("expected hidden nodes with different activation functions, got %d", distinct)
+			}
+		})
 	}
 }

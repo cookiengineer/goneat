@@ -126,9 +126,13 @@ the alternating phased search. Values are **generations to solve**; `no` means
 | multiplexer 6 (6->1) | no (0.859) | no (0.841) | no (0.829) | no (**0.923**) | no (0.852) |
 | cartpole (4->1) | 2 | 3 | 41 | 5 | 2 |
 | cubic `y = x^3` (2->1) | 134 | no (0.953) | no (0.952) | **116** | 131 |
+| quintic `y = x^5` (2->1) | 152 | no (0.952) | no (0.951) | **100** | no (0.982) |
+| septic `y = x^7` (2->1) | 156 | no (0.949) | no (0.940) | **31** | no (0.973) |
 
 Seed 1, population 200, `-benchtime=1x`. Lower generations is better; for
-unsolved tasks, higher best fitness is better.
+unsolved tasks, higher best fitness is better. The higher-order polynomial rows
+sample an 11x9 grid: a coarse square grid cannot tell x^5 from x^7 apart, since
+the two curves only differ inside a band that no sample lands in.
 
 The comparison makes the trade-offs concrete:
 

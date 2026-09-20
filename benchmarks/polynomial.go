@@ -24,20 +24,33 @@ type PolynomialClassification struct {
 // NewPolynomialClassification creates the task for the given boundary
 // polynomial and grid resolution. Coefficients are ordered from x^0 upward.
 func NewPolynomialClassification(name string, coefficients []float64, resolution int) *PolynomialClassification {
-	if resolution < 3 {
-		resolution = 3
+	return NewPolynomialClassificationGrid(name, coefficients, resolution, resolution)
+}
+
+// NewPolynomialClassificationGrid creates the task for an explicit grid shape.
+// The x and y sample counts are independent because the higher odd powers
+// (x^5, x^7) are nearly indistinguishable on a coarse square grid: a slightly
+// denser x axis is enough to separate them without paying for a fine square
+// grid everywhere.
+func NewPolynomialClassificationGrid(name string, coefficients []float64, xResolution, yResolution int) *PolynomialClassification {
+	if xResolution < 3 {
+		xResolution = 3
+	}
+	if yResolution < 3 {
+		yResolution = 3
 	}
 	task := &PolynomialClassification{
 		name:         name,
 		coefficients: append([]float64(nil), coefficients...),
 	}
 
-	step := 2.0 / float64(resolution-1)
-	for ix := 0; ix < resolution; ix++ {
-		x := -1 + float64(ix)*step
+	stepX := 2.0 / float64(xResolution-1)
+	stepY := 2.0 / float64(yResolution-1)
+	for ix := 0; ix < xResolution; ix++ {
+		x := -1 + float64(ix)*stepX
 		boundary := task.Boundary(x)
-		for iy := 0; iy < resolution; iy++ {
-			y := -1 + float64(iy)*step
+		for iy := 0; iy < yResolution; iy++ {
+			y := -1 + float64(iy)*stepY
 			label := 0.0
 			if y >= boundary {
 				label = 1
@@ -59,6 +72,31 @@ func NewCubicBoundary(resolution int) *PolynomialClassification {
 // NewQuinticBoundary returns the task with boundary y = x^5.
 func NewQuinticBoundary(resolution int) *PolynomialClassification {
 	return NewPolynomialClassification("quintic", []float64{0, 0, 0, 0, 0, 1}, resolution)
+}
+
+// NewSepticBoundary returns the task with boundary y = x^7.
+func NewSepticBoundary(resolution int) *PolynomialClassification {
+	return NewPolynomialClassification("septic", []float64{0, 0, 0, 0, 0, 0, 0, 1}, resolution)
+}
+
+// Higher-order boundaries are sampled on a denser x axis than y axis. On a
+// coarse square grid, x^5 and x^7 produce identical labels because the two
+// curves only differ inside a thin band that no sample lands in. The extra x
+// resolution exposes the difference without the cost of a fine square grid.
+const (
+	higherOrderXResolution = 11
+	higherOrderYResolution = 9
+)
+
+// NewOddPowerBoundary returns the classification task for y = x^power on the
+// tuned higher-order grid, where power is an odd exponent >= 3.
+func NewOddPowerBoundary(name string, power int) *PolynomialClassification {
+	if power < 3 {
+		power = 3
+	}
+	coefficients := make([]float64, power+1)
+	coefficients[power] = 1
+	return NewPolynomialClassificationGrid(name, coefficients, higherOrderXResolution, higherOrderYResolution)
 }
 
 // Boundary evaluates p(x).
