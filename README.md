@@ -195,3 +195,8 @@ docs/             architecture, implementation, testing
 
 The `references/` directory contains third-party research code used only as a
 design reference and is excluded from the build.
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE.txt](LICENSE.txt).
+
