@@ -149,6 +149,9 @@ func MutateWithPhase(genome *Genome, tracker *InnovationTracker, options Options
 			ToggleEnable(genome, rng)
 		}
 	}
+
+	// Toggling a connection back on could reintroduce a cycle.
+	BreakCycles(genome)
 }
 
 // PruneLink removes a random enabled connection, returning true if one was

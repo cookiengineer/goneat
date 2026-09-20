@@ -48,6 +48,7 @@ type RunResult struct {
 	BestFitness float64
 	NodeCount   int
 	Elapsed     time.Duration
+	Champion    *neat.Genome
 }
 
 // RunSearch evaluates a population with the given strategy until the task is
@@ -97,7 +98,8 @@ func RunSearch(config RunConfig) (RunResult, error) {
 			break
 		}
 	}
-	result.NodeCount = len(population.BestGenome().Nodes)
+	result.Champion = population.BestGenome()
+	result.NodeCount = len(result.Champion.Nodes)
 	result.Elapsed = time.Since(start)
 	return result, nil
 }

@@ -209,3 +209,36 @@ func (n *Network) evaluateNode(node NodeGene) float64 {
 	}
 	return node.Activation.Apply(sum)
 }
+
+// BreakCycles removes enabled connections until the genome is acyclic. Crossover
+// can combine two acyclic parents into a child that contains a cycle; this
+// keeps every genome evaluable as a feed-forward network (and differentiable by
+// the backprop graph). It returns the number of connections removed.
+func BreakCycles(genome *Genome) int {
+	removed := 0
+	for {
+		order, err := topologicalOrder(genome)
+		if err == nil {
+			return removed
+		}
+		inOrder := make(map[int]bool, len(order))
+		for _, id := range order {
+			inOrder[id] = true
+		}
+
+		// Drop the newest enabled connection whose target is stuck in a cycle.
+		index := -1
+		for i := len(genome.Connections) - 1; i >= 0; i-- {
+			connection := genome.Connections[i]
+			if connection.Enabled && !inOrder[connection.Out] {
+				index = i
+				break
+			}
+		}
+		if index == -1 {
+			return removed
+		}
+		genome.Connections = append(genome.Connections[:index], genome.Connections[index+1:]...)
+		removed++
+	}
+}

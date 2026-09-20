@@ -150,3 +150,28 @@ func TestCompatibilityDistance(t *testing.T) {
 		t.Fatalf("distance = %v, want > 0", distance)
 	}
 }
+
+func TestCrossoverAndMutationStayAcyclic(t *testing.T) {
+	tracker := NewInnovationTracker(3, 2)
+	options := DefaultOptions(3, 2)
+	options.InitialConnectionRate = 0.5
+	rng := newTestRand(123)
+
+	population := make([]*Genome, 20)
+	for i := range population {
+		genome := NewSeededGenome(options, tracker, rng)
+		AddNode(genome, tracker, options, rng)
+		AddLink(genome, tracker, options, rng)
+		population[i] = genome
+	}
+
+	for iteration := 0; iteration < 1000; iteration++ {
+		mother := population[rng.Intn(len(population))]
+		father := population[rng.Intn(len(population))]
+		child := Crossover(mother, father, rng)
+		Mutate(child, tracker, options, rng)
+		if _, err := NewNetwork(child); err != nil {
+			t.Fatalf("iteration %d produced an unevaluable child: %v", iteration, err)
+		}
+	}
+}

@@ -183,3 +183,21 @@ func (g *Genome) WeightVector() []float64 {
 	}
 	return weights
 }
+
+// HiddenActivationCounts returns a histogram of activation functions used by
+// hidden nodes.
+func (g *Genome) HiddenActivationCounts() map[ActivationType]int {
+	counts := make(map[ActivationType]int)
+	for _, node := range g.Nodes {
+		if node.Type == NodeHidden {
+			counts[node.Activation]++
+		}
+	}
+	return counts
+}
+
+// DistinctHiddenActivations counts how many different activation functions the
+// hidden nodes use.
+func (g *Genome) DistinctHiddenActivations() int {
+	return len(g.HiddenActivationCounts())
+}

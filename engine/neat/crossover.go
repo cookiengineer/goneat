@@ -80,5 +80,8 @@ func Crossover(parentA, parentB *Genome, rng *random.Rand) *Genome {
 	sort.Slice(child.Connections, func(i, j int) bool {
 		return child.Connections[i].Innovation < child.Connections[j].Innovation
 	})
+	// Combining two acyclic parents can form a cycle; keep the child
+	// feed-forward so it can be evaluated and differentiated.
+	BreakCycles(child)
 	return child
 }
