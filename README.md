@@ -12,34 +12,33 @@ signals:
 arbitrary program --adapters--> normalized frames [-1,1] --channels--> brain
        ^                                                                  |
        +---------------- controls (denormalized) <------------------------+
-                          inside a lock-step Simulation episode
 ```
 
 Because the engine only ever sees `float64` values in `[-1, 1]`, the same
 training code drives a Pong paddle, a robot, a classifier, or anything else you
 can express as sensors and controls.
 
-## What is in the box
+## Features
 
-- **`engine/neat`** - genetic core: genomes, innovation tracking, phenotype
+- `engine/neat` is the genetic core: genomes, innovation tracking, phenotype
   networks, mutation, crossover, speciation, population/epochs, and phased
   searching. JSON snapshots include RNG state, so runs resume exactly.
-- **`engine/backprop`** - a differentiable graph over an evolved genome, with
+- `engine/backprop` is a differentiable graph over an evolved genome, with
   MSE/cross-entropy losses and SGD+momentum / RMSProp optimizers. NEAT grows
   the topology; gradient descent refines the weights.
-- **`engine/hyperneat`** - CPPN-based indirect encoding, grid and evolvable
+- `engine/hyperneat` is the CPPN-based indirect encoding, grid and evolvable
   substrate layouts, threshold/LEO link expression, ES-HyperNEAT hidden-node
   discovery, and CPPN gradient training.
-- **`agent`** - a brain-agnostic `Agent` whose `Reward`/`Punish` callbacks can
+- `agent` is a brain-agnostic `Agent` whose `Reward`/`Punish` callbacks can
   trigger immediate gradient learning.
-- **`simulation`** - a `World` interface, user-defined reward/punish callbacks,
-  a lock-step `ChannelRunner` (one goroutine per agent) and a deterministic
-  `InlineRunner`, plus resumable snapshots with optional auto-save.
-- **`adapter`** - adapters for Go's native data types (bool, int, uint,
+- `simulation` contains `World` interface, user-defined reward/punish callbacks,
+  a `ChannelRunner` (one goroutine per agent) and a deterministic `InlineRunner`,
+  plus resumable snapshots with optional auto-save.
+- `adapter` contains adapters for Go's native data types (bool, int, uint,
   float32/float64, byte, rune, complex, time.Duration, slices, maps, strings,
   enums, 2D/3D positions) and the `Vectorizer`/`Manifest` frame layout.
-- **`engine/vector`** - scalar and `GOEXPERIMENT=simd` math kernels.
-- **`engine/random`** - a serializable PCG32 generator for reproducible runs.
+- `engine/vector` contains the scalar and `GOEXPERIMENT=simd` math kernels.
+- `engine/random` contains a serializable PCG32 generator for reproducible runs.
 
 ## Quick start
 
@@ -74,9 +73,8 @@ sim.RunGenerations(context.Background(), 30)
 ## Benchmark results
 
 Numbers below were produced with `make bench-xor`, `make bench-phases` and
-`make bench-vector` on an AMD Ryzen 7 7840HS (16 threads), Go 1.27.
-Re-run them on your machine; treat them as relative comparisons rather than
-absolute constants.
+`make bench-vector` with Go 1.27. Re-run them on your machine and treat
+them as relative comparisons rather than absolute constants.
 
 ### Vector kernels (n = 1024)
 
@@ -136,28 +134,14 @@ the two curves only differ inside a band that no sample lands in.
 
 The comparison makes the trade-offs concrete:
 
-- **Prune-only and Backprop-only cannot solve the combinatorial or curved
-  tasks** because they cannot add the hidden units those tasks require. This is
-  expected, not a bug: only complexifying phases can grow structure.
-- **Hybrid usually converges fastest** on tasks that need structure, because
+- Prune-only and Backprop-only cannot solve the combinatorial or curved
+  tasks. Both strategies cannot add the hidden units those tasks require.
+  This is expected, as only complexifying phases can grow structure.
+- Hybrid usually converges fastest onn tasks that need structure, because
   gradient training refines the weights of newly grown topology.
-- **Phased (complexify/simplify cycles)** matches default on easy tasks and can
-  reach the best fitness on tasks that reward pruning, but simplification can
-  slow early convergence.
-
-### Curved decision boundary demo
-
-`go run ./examples/parabola` learns to classify 2D points against `y = x^3`.
-A straight line cannot separate the classes, so the search must grow hidden
-neurons and use several activation functions. The demo prints the result:
-
-```
-solved: true | accuracy 1.0000 | hidden nodes: 20 | distinct activations: 6
-activation histogram: sigmoid:1 tanh:2 relu:2 sin:4 abs:5 mult:6
-```
-
-This demonstrates per-node activation functions and structural expansion
-working together.
+- Phased (complexify/simplify cycles) matches default on easy tasks and can
+  reach the best fitness on tasks that reward pruning, but simplification
+  can slow early convergence.
 
 ## Testing
 
@@ -182,7 +166,7 @@ snapshot/resume bit-identity.
 - [Testing and benchmarking guide](docs/testing.md) - correctness proofs,
   benchmarks, how to compare strategies.
 
-## Repository layout
+## Repository Layout
 
 ```
 engine/vector     SIMD/scalar math kernels
@@ -197,9 +181,6 @@ examples/         xor, parabola, pong, hyperneat, hyperneat_gradient
 benchmarks/       parity, multiplexer, cartpole, polynomial, phase comparison
 docs/             architecture, implementation, testing
 ```
-
-The `references/` directory contains third-party research code used only as a
-design reference and is excluded from the build.
 
 ## License
 
