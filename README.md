@@ -1,17 +1,33 @@
-# goneat
+# GoNEAT Decision Engine
 
-`goneat` is a Go decision engine: a library for building **live simulation,
-training and execution environments** around [NEAT](http://nn.cs.utexas.edu/?stanley:gecco02b)
-and [HyperNEAT](https://eplex.cs.ucf.edu/hyperNEATpage/).
+This projects evolved out of the learnings from the previous [lycheejs](https://github.com/cookiengineer/lycheejs)
+Engine Project.
 
-It controls arbitrary software through adapters that translate program state
-into a normalized "NEAT world" and translate neural outputs back into control
-signals:
+It is a HyperNEAT based decision engine, made for embedding into other Go programs
+to allow meta-learning, live training and evaluation, and the automated evolution
+of adaptive neural network graphs.
+
+Due to HyperNEAT and NEAT only requiring one generic input matrix and a bias node,
+this can be freely combined with other sensors that normalized their output into
+vector space (from `-1.0` to `+1.0`).
+
+## Prerequisites
+
+Reading Material, heavily recommended:
+
+- [NEAT](http://nn.cs.utexas.edu/?stanley:gecco02b)
+- [HyperNEAT](https://eplex.cs.ucf.edu/hyperNEATpage/)
+
+## Motivation
+
+The GoNEAT decision engine controls arbitrary software through adapters that translate
+program state into a normalized "NEAT world" and translate neural outputs back into
+control signals for the rest of the program.
 
 ```
-arbitrary program --adapters--> normalized frames [-1,1] --channels--> brain
-       ^                                                                  |
-       +---------------- controls (denormalized) <------------------------+
+program --adapters--> normalized frames --channels--> brain
+   ^                                                    |
+   +------------ controls (denormalized) <--------------+
 ```
 
 Because the engine only ever sees `float64` values in `[-1, 1]`, the same
@@ -20,36 +36,36 @@ can express as sensors and controls.
 
 ## Features
 
-- `engine/neat` is the genetic core: genomes, innovation tracking, phenotype
+- `engine/neat` implements genomes, innovation tracking, phenotype
   networks, mutation, crossover, speciation, population/epochs, and phased
-  searching. JSON snapshots include RNG state, so runs resume exactly.
-- `engine/backprop` is a differentiable graph over an evolved genome, with
+  searching.
+- `engine/backprop` is the differentiable graph over an evolved genome, with
   MSE/cross-entropy losses and SGD+momentum / RMSProp optimizers. NEAT grows
-  the topology; gradient descent refines the weights.
+  the topology in epoches whereas gradient descent refines the weights.
 - `engine/hyperneat` is the CPPN-based indirect encoding, grid and evolvable
   substrate layouts, threshold/LEO link expression, ES-HyperNEAT hidden-node
   discovery, and CPPN gradient training.
-- `agent` is a brain-agnostic `Agent` whose `Reward`/`Punish` callbacks can
+- `agent` is a brain-agnostic `Agent` whose `Reward` / `Punish` callbacks can
   trigger immediate gradient learning.
-- `simulation` contains `World` interface, user-defined reward/punish callbacks,
+- `simulation` contains `World` interface, user-defined reward / punish callbacks,
   a `ChannelRunner` (one goroutine per agent) and a deterministic `InlineRunner`,
-  plus resumable snapshots with optional auto-save.
-- `adapter` contains adapters for Go's native data types (bool, int, uint,
-  float32/float64, byte, rune, complex, time.Duration, slices, maps, strings,
-  enums, 2D/3D positions) and the `Vectorizer`/`Manifest` frame layout.
-- `engine/vector` contains the scalar and `GOEXPERIMENT=simd` math kernels.
+  and resumable snapshots with optional auto-save.
+- `adapter` contains adapters for Go's native data types. Currently this is
+  `bool`, `int`, `uint`, `float32`, `float64`, `byte`, `rune`, `complex`, `time.Duration`,
+  slices, maps, strings, enums, and 2D/3D positions.
+- `engine/vector` contains the scalar and SIMD math kernels.
 - `engine/random` contains a serializable PCG32 generator for reproducible runs.
 
-## Quick start
+## Usage
 
 ```sh
 go get github.com/cookiengineer/goneat
 
-go run ./examples/xor                  # evolve a NEAT solution to XOR
-go run ./examples/parabola             # learn a curved decision boundary
-go run ./examples/pong                 # evolve a paddle controller
-go run ./examples/hyperneat            # ES-HyperNEAT shape detection
-go run ./examples/hyperneat_gradient   # gradient training of substrate + CPPN
+go run ./examples/xor;                  # evolve a NEAT solution to XOR
+go run ./examples/parabola;             # learn a curved decision boundary
+go run ./examples/pong;                 # evolve a paddle controller
+go run ./examples/hyperneat;            # ES-HyperNEAT shape detection
+go run ./examples/hyperneat_gradient;   # gradient training of substrate + CPPN
 ```
 
 Minimal training loop:
@@ -70,119 +86,39 @@ sim.SetAutoSave("run_snapshot.json", 5)  // checkpoint to the working directory
 sim.RunGenerations(context.Background(), 30)
 ```
 
-## Benchmark results
+## Benchmarking
 
-Numbers below were produced with `make bench-xor`, `make bench-phases` and
-`make bench-vector` with Go 1.27. Re-run them on your machine and treat
-them as relative comparisons rather than absolute constants.
+`GOEXPERIMENT=simd` activates the SIMD kernel, which performs roughly 2-3x faster
+than the defaulted Scalar kernel. Go 1.27 or later required.
 
-### Vector kernels (n = 1024)
-
-| kernel | scalar | `GOEXPERIMENT=simd` |
-|---|---|---|
-| `Dot` | 447.6 ns/op | 155.4 ns/op |
-| `Add` | 533.6 ns/op | 222.0 ns/op |
-| `Sub` | 363.6 ns/op | 206.7 ns/op |
-| `Scale` | 256.3 ns/op | 146.0 ns/op |
-| `MulAdd` | 409.9 ns/op | 215.3 ns/op |
-| `Sum` | 163.9 ns/op | 93.2 ns/op |
-
-The SIMD backend is roughly 2-3x faster and produces results equivalent to the
-scalar backend within floating-point tolerance.
-
-### Gradient training (XOR, `2 -> 4(tanh) -> 1(sigmoid)`)
-
-`make bench-xor` measures both speed and training quality.
-
-| benchmark | ns/op | iters/op | final_loss | solve_rate |
-|---|---|---|---|---|
-| `XORConvergence/mse-sgd` | 131,448 | 15.8 | 0.1042 | 1.000 |
-| `XORConvergence/cross-entropy-rmsprop` | 161,382 | 18.7 | 0.4191 | 1.000 |
-| `XORLearnStep` | 2,250 | - | - | - |
-| `PopulationSolvesXOR` | 17.8 ms | 12 generations | - | 1.000 |
-| `SubstrateTrainStep` (HyperNEAT) | 678 | - | - | - |
-| `CppnTrainStep` (HyperNEAT) | 6,867 | - | - | - |
-
-At an equal budget (200 passes) both losses solve XOR:
-
-| loss | final_loss | accuracy |
-|---|---|---|
-| MSE + SGD | 0.0001466 | 1.000 |
-| Cross-entropy + RMSProp | 0.0000000 | 1.000 |
-
-### Search strategy comparison
-
-`make bench-phases` runs every standard task against the four phase modes plus
-the alternating phased search. Values are **generations to solve**; `no` means
-"not solved within budget", with the best fitness in parentheses.
-
-| task | default | prune | backprop | hybrid | phased |
-|---|---|---|---|---|---|
-| parity2 (2->1) | 11 | no | no | **4** | 11 |
-| parity3 (3->1) | 86 | no | no | **34** | no |
-| parity4 (4->1) | no (0.909) | no (0.800) | no (0.800) | no (0.941) | no (**0.947**) |
-| multiplexer 6 (6->1) | no (0.859) | no (0.841) | no (0.829) | no (**0.923**) | no (0.852) |
-| cartpole (4->1) | 2 | 3 | 41 | 5 | 2 |
-| cubic `y = x^3` (2->1) | 134 | no (0.953) | no (0.952) | **116** | 131 |
-| quintic `y = x^5` (2->1) | 152 | no (0.952) | no (0.951) | **100** | no (0.982) |
-| septic `y = x^7` (2->1) | 156 | no (0.949) | no (0.940) | **31** | no (0.973) |
-
-Seed 1, population 200, `-benchtime=1x`. Lower generations is better; for
-unsolved tasks, higher best fitness is better. The higher-order polynomial rows
-sample an 11x9 grid: a coarse square grid cannot tell x^5 from x^7 apart, since
-the two curves only differ inside a band that no sample lands in.
-
-The comparison makes the trade-offs concrete:
-
-- Prune-only and Backprop-only cannot solve the combinatorial or curved
-  tasks. Both strategies cannot add the hidden units those tasks require.
-  This is expected, as only complexifying phases can grow structure.
-- Hybrid usually converges fastest onn tasks that need structure, because
-  gradient training refines the weights of newly grown topology.
-- Phased (complexify/simplify cycles) matches default on easy tasks and can
-  reach the best fitness on tasks that reward pruning, but simplification
-  can slow early convergence.
+```
+make bench-xor;
+make bench-phases;
+make bench-vector;
+```
 
 ## Testing
 
 ```sh
-make test        # unit + integration tests
-make test-race   # race detector
-make test-simd   # tests built with GOEXPERIMENT=simd
-make bench-xor   # training correctness + efficiency
-make bench-phases# search strategy comparison (slow)
+make test;         # unit + integration tests
+make test-race;    # race detector
+make test-simd;    # tests built with GOEXPERIMENT=simd
+make bench-xor;    # training correctness + efficiency
+make bench-phases; # search strategy comparison (slow)
 ```
 
-The suite is the proof that training works and that runs are reproducible:
-numerical gradient checks, deterministic XOR convergence across seeds, a
-seed-pinned regression bound, `InlineRunner`/`ChannelRunner` equivalence, and
-snapshot/resume bit-identity.
+The suite is the proof that training works and that runs are reproducible.
+It contains numerical gradient checks, deterministic XOR convergence across
+seeds, a seed-pinned regression bound, `InlineRunner` / `ChannelRunner`
+equivalence test, and a snapshot / resume bit-identity test.
 
 ## Documentation
 
-- [Architecture](docs/architecture.md) - packages, data flow, core types.
-- [Implementation guide](docs/implementation.md) - build a world, wire a
-  simulation, add training, HyperNEAT, snapshots.
-- [Testing and benchmarking guide](docs/testing.md) - correctness proofs,
-  benchmarks, how to compare strategies.
-
-## Repository Layout
-
-```
-engine/vector     SIMD/scalar math kernels
-engine/random     serializable PCG32 generator
-engine/neat       genetic core (genome, network, species, population)
-engine/backprop   differentiable graph over a neat.Genome
-engine/hyperneat  CPPN, substrate layouts, ES-HyperNEAT
-adapter           sensor/control vectorizers and placement manifest
-agent             Agent, Brain, Trainer, Training
-simulation        World, Simulation, callbacks, runners, snapshot
-examples/         xor, parabola, pong, hyperneat, hyperneat_gradient
-benchmarks/       parity, multiplexer, cartpole, polynomial, phase comparison
-docs/             architecture, implementation, testing
-```
+- [Architecture](docs/architecture.md) documents packages, data flow, core types.
+- [Implementation guide](docs/implementation.md) documents how to use this library.
+- [Testing and benchmarking guide](docs/testing.md) documents the correctness proofs and benchmarks.
 
 ## License
 
-This project is licensed under the MIT License. See [LICENSE.txt](LICENSE.txt).
+This project is licensed under the [MIT License](LICENSE.txt).
 
